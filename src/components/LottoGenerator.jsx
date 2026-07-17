@@ -34,8 +34,8 @@ export default function LottoGenerator() {
       setError('1부터 45 사이의 숫자만 입력할 수 있어요.');
       return;
     }
-    if (unique.length > 6) {
-      setError('최대 6개까지만 지정할 수 있어요.');
+    if (unique.length > 5) {
+      setError('최대 5개까지만 지정할 수 있어요. (최소 1자리는 랜덤으로 남겨야 5세트가 서로 달라져요)');
       return;
     }
     setSets(Array.from({ length: 5 }, () => randomSet(unique)));
@@ -48,7 +48,7 @@ export default function LottoGenerator() {
         나만의 로또 번호 생성기
       </h2>
       <p style={{ color: 'var(--sub)', margin: '4px 0 20px', fontSize: 14 }}>
-        꼭 넣고 싶은 숫자가 있다면 쉼표나 띄어쓰기로 구분해서 입력해 주세요 (최대 6개). 비워두면 완전 랜덤으로 생성돼요.
+        꼭 넣고 싶은 숫자가 있다면 쉼표나 띄어쓰기로 구분해서 입력해 주세요 (최대 5개, 최소 1자리는 항상 랜덤으로 채워져요). 비워두면 완전 랜덤으로 생성돼요.
       </p>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
