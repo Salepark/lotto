@@ -46,7 +46,7 @@ export default function Header({ user, onLoginClick, onLogoutClick, onMyPageClic
             backgroundClip: 'text',
           }}
         >
-          Bboggl Lotto
+          My Lotto
         </h1>
       </div>
 
