@@ -1,26 +1,89 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, User } from 'lucide-react';
 import SectionEyebrow, { cardStyle, sectionTitleStyle } from './SectionEyebrow';
-import { INITIAL_POSTS } from '../data/dummyData';
+import { supabase } from '../lib/supabaseClient';
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
 
 export default function CommunityBoard({ user, onRequireLogin }) {
-  const [posts, setPosts] = useState(INITIAL_POSTS);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const listEndRef = useRef(null);
 
   const displayName = user?.user_metadata?.full_name || user?.user_metadata?.nickname || user?.email?.split('@')[0];
 
-  function handleSend() {
+  useEffect(() => {
+    let active = true;
+
+    async function loadPosts() {
+      setLoading(true);
+      const { data, error: fetchError } = await supabase
+        .from('posts')
+        .select('id, author, message, created_at')
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (!active) return;
+      if (fetchError) {
+        setError('게시글을 불러오지 못했어요. supabase/posts.sql을 실행했는지 확인해 주세요.');
+      } else {
+        setPosts(data || []);
+      }
+      setLoading(false);
+    }
+
+    loadPosts();
+
+    // 새 글이 올라오면 실시간으로 반영
+    const channel = supabase
+      .channel('posts-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'posts' },
+        (payload) => {
+          setPosts((prev) => (prev.some((p) => p.id === payload.new.id) ? prev : [...prev, payload.new]));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    listEndRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [posts.length]);
+
+  async function handleSend() {
     if (!user) {
       onRequireLogin();
       return;
     }
     const text = message.trim();
     if (!text) return;
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    setPosts((prev) => [...prev, { id: prev.length + 1, author: displayName || '회원', message: text, time }]);
-    setMessage('');
-    // TODO: 실제 서비스에서는 여기서 Supabase 테이블(posts)에 insert 하면 됩니다.
+
+    setSending(true);
+    setError('');
+    const { error: insertError } = await supabase.from('posts').insert({
+      user_id: user.id,
+      author: displayName || '회원',
+      message: text,
+    });
+
+    if (insertError) {
+      setError('등록에 실패했어요: ' + insertError.message);
+    } else {
+      setMessage('');
+    }
+    setSending(false);
   }
 
   function handleKeyDown(e) {
@@ -49,6 +112,10 @@ export default function CommunityBoard({ user, onRequireLogin }) {
         }}
         aria-live="polite"
       >
+        {loading && <p style={{ color: 'var(--sub)', fontSize: 14 }}>불러오는 중...</p>}
+        {!loading && posts.length === 0 && (
+          <p style={{ color: 'var(--sub)', fontSize: 14 }}>아직 게시글이 없어요. 첫 글을 남겨보세요!</p>
+        )}
         {posts.map((p) => (
           <div
             key={p.id}
@@ -80,13 +147,20 @@ export default function CommunityBoard({ user, onRequireLogin }) {
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
                 <span style={{ fontWeight: 700, fontSize: 13 }}>{p.author}</span>
-                <span style={{ fontSize: 11, color: 'var(--sub)' }}>{p.time}</span>
+                <span style={{ fontSize: 11, color: 'var(--sub)' }}>{formatTime(p.created_at)}</span>
               </div>
               <p style={{ margin: '2px 0 0', fontSize: 14, wordBreak: 'break-word' }}>{p.message}</p>
             </div>
           </div>
         ))}
+        <div ref={listEndRef} />
       </div>
+
+      {error && (
+        <p role="alert" style={{ color: '#DD2A7B', fontSize: 13, fontWeight: 500, margin: '0 0 12px' }}>
+          {error}
+        </p>
+      )}
 
       <div style={{ display: 'flex', gap: 10 }}>
         <label htmlFor="board-input" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
@@ -98,7 +172,7 @@ export default function CommunityBoard({ user, onRequireLogin }) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={user ? '메시지를 입력하세요' : '로그인 후 글을 남길 수 있어요'}
+          placeholder={user ? '메시지 입력하세요' : '로그인 후 글을 남길 수 있어요'}
           style={{
             flex: 1,
             padding: '12px 16px',
@@ -108,7 +182,7 @@ export default function CommunityBoard({ user, onRequireLogin }) {
             outline: 'none',
           }}
         />
-        <button className="btn" onClick={handleSend} aria-label="게시글 등록">
+        <button className="btn" onClick={handleSend} disabled={sending} aria-label="게시글 등록">
           <Send className="icon" style={{ width: 18, height: 18 }} />
         </button>
       </div>
