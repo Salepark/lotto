@@ -17,7 +17,7 @@ export default function LastWeekNumbers() {
         동행복권 공식 사이트에서 최신 회차 당첨번호를 바로 확인할 수 있어요.
       </p>
 
-      
+      <a
         href={DHLOTTERY_RESULT_URL}
         target="_blank"
         rel="noopener noreferrer"
