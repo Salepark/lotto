@@ -12,9 +12,24 @@ function estimateLatestRound() {
 
 async function fetchRound(round) {
   const url = `https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${round}`;
-  const response = await fetch(url);
-  if (!response.ok) return null;
-  const data = await response.json();
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      Referer: 'https://www.dhlottery.co.kr/gameResult.do?method=byWin',
+      Accept: 'application/json',
+    },
+  });
+  if (!response.ok) {
+    console.error(`[lotto] round ${round} HTTP ${response.status}`);
+    return null;
+  }
+  let data;
+  try {
+    data = await response.json();
+  } catch (parseErr) {
+    console.error(`[lotto] round ${round} JSON parse failed:`, parseErr.message);
+    return null;
+  }
   if (data.returnValue !== 'success') return null;
   return data;
 }
@@ -54,6 +69,7 @@ export default async function handler(req, res) {
       bonus: data.bnusNo,
     });
   } catch (err) {
+    console.error('[lotto] unexpected error:', err);
     res.status(500).json({ error: '서버에서 오류가 발생했어요.' });
   }
 }
