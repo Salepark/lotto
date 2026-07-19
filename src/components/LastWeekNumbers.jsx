@@ -4,7 +4,7 @@ import SectionEyebrow, { cardStyle, sectionTitleStyle } from './SectionEyebrow';
 
 // 동행복권의 회차별 당첨번호 비공식 API가 더 이상 응답하지 않아(홈페이지로 리다이렉트됨),
 // 억지로 값을 긁어오는 대신 공식 페이지로 바로 연결하는 방식을 택했습니다.
-const DHLOTTERY_RESULT_URL = 'https://www.dhlottery.co.kr/gameResult.do?method=byWin';
+const DHLOTTERY_RESULT_URL = 'https://www.dhlottery.co.kr/lt645/result';
 
 export default function LastWeekNumbers() {
   return (
