@@ -4,7 +4,7 @@ import { Dices, LogIn, LogOut, User } from 'lucide-react';
 export default function Header({ user, onLoginClick, onLogoutClick, onMyPageClick }) {
   const nickname =
     user?.user_metadata?.full_name || user?.user_metadata?.name || user?.user_metadata?.nickname || user?.email || '회원';
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+  const avatarUrl = (user?.user_metadata?.avatar_url || user?.user_metadata?.picture)?.replace(/^http:\/\//, 'https://');
 
   return (
     <header

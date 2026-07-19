@@ -19,7 +19,7 @@ export default function MyPage({ user, onBack }) {
 
   const provider = user?.app_metadata?.provider;
   const joinedAt = user?.created_at ? new Date(user.created_at).toLocaleDateString('ko-KR') : '-';
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+  const avatarUrl = (user?.user_metadata?.avatar_url || user?.user_metadata?.picture)?.replace(/^http:\/\//, 'https://');
 
   useEffect(() => {
     let active = true;
