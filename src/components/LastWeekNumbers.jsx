@@ -3,6 +3,23 @@ import { Trophy, RefreshCw } from 'lucide-react';
 import NumberBall from './NumberBall';
 import SectionEyebrow, { cardStyle, sectionTitleStyle } from './SectionEyebrow';
 
+// 로또 1회차 추첨: 2002-12-07 20:45 KST (UTC로는 11:45)
+const FIRST_DRAW_UTC = Date.UTC(2002, 11, 7, 11, 45, 0);
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function estimateLatestRound() {
+  return Math.max(Math.floor((Date.now() - FIRST_DRAW_UTC) / WEEK_MS) + 1, 1);
+}
+
+async function fetchRound(round) {
+  const url = `https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=${round}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.returnValue !== 'success') return null;
+  return data;
+}
+
 export default function LastWeekNumbers() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -12,12 +29,23 @@ export default function LastWeekNumbers() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/lotto');
-      if (!res.ok) throw new Error('요청 실패');
-      const data = await res.json();
-      setResult(data);
+      let round = estimateLatestRound();
+      let data = null;
+      for (let attempts = 0; attempts < 3 && round > 0 && !data; attempts += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        data = await fetchRound(round);
+        if (!data) round -= 1;
+      }
+      if (!data) throw new Error('empty');
+
+      setResult({
+        round: data.drwNo,
+        date: data.drwNoDate,
+        numbers: [data.drwtNo1, data.drwtNo2, data.drwtNo3, data.drwtNo4, data.drwtNo5, data.drwtNo6].sort((a, b) => a - b),
+        bonus: data.bnusNo,
+      });
     } catch (err) {
-      setError('당첨번호를 불러오지 못했어요. 로컬(npm run dev)에서는 이 기능이 동작하지 않고, 배포된 사이트에서만 확인할 수 있어요.');
+      setError('당첨번호를 불러오지 못했어요. 브라우저 보안 정책(CORS)에 막혔을 수 있어요.');
     } finally {
       setLoading(false);
     }
